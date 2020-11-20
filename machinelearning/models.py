@@ -97,7 +97,8 @@ class RegressionModel(object):
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
-        multiplier = -self.learning_rate
+        # w * direction < 0, so we use negative multiplier
+        multiplier = self.learning_rate * -1
         params = [self.w1, self.w2, self.b1, self.b2]
         loss = float('inf')
         while loss >= .02:
@@ -126,6 +127,14 @@ class DigitClassificationModel(object):
     def __init__(self):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+        self.batch_size = 100
+        self.hidden_size = 300
+        self.learning_rate = .5
+
+        self.w1 = nn.Parameter(784, self.hidden_size)
+        self.w2 = nn.Parameter(self.hidden_size, 10)
+        self.b1 = nn.Parameter(1, self.hidden_size)
+        self.b2 = nn.Parameter(1, 10)
 
     def run(self, x):
         """
@@ -142,6 +151,13 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        xw1 = nn.Linear(x, self.w1)
+        xw1PlusB1 = nn.AddBias(xw1, self.b1)
+        relu = nn.ReLU(xw1PlusB1)
+        reluw2 = nn.Linear(relu, self.w2)
+        reluw2PlusB2 = nn.AddBias(reluw2, self.b2)
+
+        return reluw2PlusB2
 
     def get_loss(self, x, y):
         """
@@ -157,12 +173,23 @@ class DigitClassificationModel(object):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        return nn.SoftmaxLoss(self.run(x), y)
 
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        # w * direction < 0, so we use negative multiplier
+        multiplier = self.learning_rate * -1
+        params = [self.w1, self.w2, self.b1, self.b2]
+        while dataset.get_validation_accuracy() < .97:
+            for x,y in dataset.iterate_once(self.batch_size):
+                loss = self.get_loss(x,y)
+                grad_params = nn.gradients(loss, params)
+                loss = nn.as_scalar(loss)
+                for i in range(4):
+                    params[i].update(grad_params[i], multiplier)
 
 class LanguageIDModel(object):
     """
