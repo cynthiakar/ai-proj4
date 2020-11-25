@@ -28,6 +28,8 @@ class PerceptronModel(object):
         """
         "*** YOUR CODE HERE ***"
 
+        return nn.DotProduct(self.w, x)
+
     def get_prediction(self, x):
         """
         Calculates the predicted class for a single data point `x`.
@@ -35,12 +37,31 @@ class PerceptronModel(object):
         Returns: 1 or -1
         """
         "*** YOUR CODE HERE ***"
+        # non-negative
+        run = self.run(x)
+        if (nn.as_scalar(run) >= 0.0):
+            return 1
+        else: 
+        # negative
+            return -1
 
     def train(self, dataset):
         """
         Train the perceptron until convergence.
         """
         "*** YOUR CODE HERE ***"
+        while True:
+            successful = True
+            itern = 1
+            for a, b in dataset.iterate_once(itern):
+                predict = self.get_prediction(a)
+                y_value = nn.as_scalar(b)
+                if (y_value != predict):
+                    successful = False
+                    nn.Parameter.update(self.w, a, y_value)
+            if successful: 
+                break
+            
 
 class RegressionModel(object):
     """
@@ -199,6 +220,7 @@ class LanguageIDModel(object):
     methods here. We recommend that you implement the RegressionModel before
     working on this part of the project.)
     """
+
     def __init__(self):
         # Our dataset contains words from five different languages, and the
         # combined alphabets of the five languages contain a total of 47 unique
@@ -209,6 +231,19 @@ class LanguageIDModel(object):
 
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
+
+        self.dim_size = 5
+        self.batch_size = 2
+        self.hidden_size = 400
+
+        self.learning_rate = 0.005
+
+        self.w = nn.Parameter(self.num_chars, self.hidden_size) #weights
+        self.w_hidden = nn.Parameter(self.hidden_size, self.hidden_size)
+        self.w_final = nn.Parameter(self.hidden_size, self.dim_size)
+
+
+
 
     def run(self, xs):
         """
@@ -240,6 +275,12 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+        x = nn.Linear(xs[0],self.w)
+        x_chnges = x
+
+        for n, y in enumerate(xs[1:]):
+            x_chnges = nn.Add(nn.Linear(y,self.w), nn.Linear(x_chnges, self.w_hidden))
+        return nn.Linear(x_chnges, self.w_final)
 
     def get_loss(self, xs, y):
         """
@@ -257,8 +298,24 @@ class LanguageIDModel(object):
         """
         "*** YOUR CODE HERE ***"
 
+        return nn.SoftmaxLoss(self.run(xs),y)
+
     def train(self, dataset):
         """
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        params =  [self.w, self.w_hidden, self.w_final]
+        multiplier = self.learning_rate * -1
+        while True:
+            
+            for n, m in dataset.iterate_once(self.batch_size):
+                getLoss = self.get_loss(n,m)
+                gradi = nn.gradients(getLoss, params)
+
+                self.w.update(gradi[0], multiplier)
+                self.w_hidden.update(gradi[1], multiplier)
+                self.w_final.update(gradi[2], multiplier)
+            print(dataset.get_validation_accuracy())
+            if dataset.get_validation_accuracy() >= 0.86:
+                return
