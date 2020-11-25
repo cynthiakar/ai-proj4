@@ -253,7 +253,7 @@ class LanguageIDModel(object):
         # dimension size
         self.dim_size = 5
         self.batch_size = 100
-        self.hidden_size = 200
+        self.hidden_size = 300
         self.learning_rate = 0.1
 
         # weights
@@ -333,7 +333,7 @@ class LanguageIDModel(object):
         params =  [self.w, self.w_hidden, self.w_final]
         multiplier = self.learning_rate * -1
         # stop when accuracy is more than .82 for autograder
-        while dataset.get_validation_accuracy() < 0.82:
+        while dataset.get_validation_accuracy() < 0.86:
             # retrieve batches of training examples
             for n, m in dataset.iterate_once(self.batch_size):
                 # construct loss node
