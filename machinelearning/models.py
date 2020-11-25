@@ -76,8 +76,10 @@ class RegressionModel(object):
         self.hidden_size = 50
         self.learning_rate = .01
 
+        # weights
         self.w1 = nn.Parameter(1, self.hidden_size)
         self.w2 = nn.Parameter(self.hidden_size, 1)
+        # bias
         self.b1 = nn.Parameter(1, self.hidden_size)
         self.b2 = nn.Parameter(1, 1)
 
@@ -92,6 +94,8 @@ class RegressionModel(object):
         """
         "*** YOUR CODE HERE ***"
 
+        # two layer 
+        # f(x) = relu(x*w1 + b1) * w2 + b2
         xw1 = nn.Linear(x, self.w1)
         xw1PlusB1 = nn.AddBias(xw1, self.b1)
         relu = nn.ReLU(xw1PlusB1)
@@ -120,13 +124,19 @@ class RegressionModel(object):
         "*** YOUR CODE HERE ***"
         # w * direction < 0, so we use negative multiplier
         multiplier = self.learning_rate * -1
+        # params to update
         params = [self.w1, self.w2, self.b1, self.b2]
         loss = float('inf')
         while loss >= .02:
+            # retrieve batches of training examples
             for x,y in dataset.iterate_once(self.batch_size):
+                # construct a loss node
                 loss = self.get_loss(x,y)
+                # gradients of the loss with respect to the parameters
                 grad_params = nn.gradients(loss, params)
+                # get python number for loss
                 loss = nn.as_scalar(loss)
+                # update our parameters
                 for i in range(4):
                     params[i].update(grad_params[i], multiplier)
 
@@ -172,6 +182,9 @@ class DigitClassificationModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
+
+        # two layer 
+        # f(x) = relu(x*w1 + b1) * w2 + b2
         xw1 = nn.Linear(x, self.w1)
         xw1PlusB1 = nn.AddBias(xw1, self.b1)
         relu = nn.ReLU(xw1PlusB1)
@@ -203,12 +216,15 @@ class DigitClassificationModel(object):
         "*** YOUR CODE HERE ***"
         # w * direction < 0, so we use negative multiplier
         multiplier = self.learning_rate * -1
+        # params to update
         params = [self.w1, self.w2, self.b1, self.b2]
         while dataset.get_validation_accuracy() < .97:
+            # retrieve batches of training examples
             for x,y in dataset.iterate_once(self.batch_size):
+                # construct a loss node
                 loss = self.get_loss(x,y)
+                # gradients of the loss with respect to the parameters
                 grad_params = nn.gradients(loss, params)
-                loss = nn.as_scalar(loss)
                 for i in range(4):
                     params[i].update(grad_params[i], multiplier)
 
@@ -232,18 +248,17 @@ class LanguageIDModel(object):
         # Initialize your model parameters here
         "*** YOUR CODE HERE ***"
 
+        # dimension size
         self.dim_size = 5
-        self.batch_size = 2
-        self.hidden_size = 400
+        self.batch_size = 100
+        self.hidden_size = 200
+        self.learning_rate = 0.1
 
-        self.learning_rate = 0.005
-
-        self.w = nn.Parameter(self.num_chars, self.hidden_size) #weights
+        # weights
+        self.w = nn.Parameter(self.num_chars, self.hidden_size)
         self.w_hidden = nn.Parameter(self.hidden_size, self.hidden_size)
         self.w_final = nn.Parameter(self.hidden_size, self.dim_size)
-
-
-
+        self.b = nn.Parameter(1, self.hidden_size)
 
     def run(self, xs):
         """
@@ -275,12 +290,25 @@ class LanguageIDModel(object):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-        x = nn.Linear(xs[0],self.w)
-        x_chnges = x
+        # one layer 
+        # based on architecture, f(x) = relu(x*w1 + b1)
+        # except z_i = x_i*w + h_i * w_hidden
+        # so it's more like f(z) = relu(z + b1)
+        # z0 = x0 * w
+        z_0 = nn.Linear(xs[0], self.w)
+        z_0PlusB1 = nn.AddBias(z_0, self.b)
+        relu = nn.ReLU(z_0PlusB1)
+        # compute first h
+        h_i = relu
 
-        for n, y in enumerate(xs[1:]):
-            x_chnges = nn.Add(nn.Linear(y,self.w), nn.Linear(x_chnges, self.w_hidden))
-        return nn.Linear(x_chnges, self.w_final)
+        for x in xs[1:]:
+            xw = nn.Linear(x, self.w)
+            hw = nn.Linear(h_i, self.w_hidden)
+            # z_i = x_i*w + h_i * w_hidden
+            z_i = nn.Add(xw, hw)
+            addBias = nn.AddBias(z_i, self.b)
+            h_i = nn.ReLU(addBias)
+        return nn.Linear(h_i, self.w_final)
 
     def get_loss(self, xs, y):
         """
@@ -305,17 +333,18 @@ class LanguageIDModel(object):
         Trains the model.
         """
         "*** YOUR CODE HERE ***"
+        # params to update
         params =  [self.w, self.w_hidden, self.w_final]
         multiplier = self.learning_rate * -1
-        while True:
-            
+        # stop when accuracy is more than .82 for autograder
+        while dataset.get_validation_accuracy() < 0.82:
+            # retrieve batches of training examples
             for n, m in dataset.iterate_once(self.batch_size):
+                # construct loss node
                 getLoss = self.get_loss(n,m)
+                # gradients of the loss with respect to the parameters
                 gradi = nn.gradients(getLoss, params)
-
+                # update our parameters
                 self.w.update(gradi[0], multiplier)
                 self.w_hidden.update(gradi[1], multiplier)
                 self.w_final.update(gradi[2], multiplier)
-            print(dataset.get_validation_accuracy())
-            if dataset.get_validation_accuracy() >= 0.86:
-                return
